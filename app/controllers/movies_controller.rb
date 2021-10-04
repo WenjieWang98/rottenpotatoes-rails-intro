@@ -7,9 +7,48 @@ class MoviesController < ApplicationController
   end
 
   def index
-    
     @all_ratings = Movie.all_ratings
-    @ratings_to_show = params[:ratings] || session[:ratings] || {}
+    if params[:commit] == "Refresh" && params[:ratings].blank?
+      session.delete(:ratings)
+      @ratings_to_show = []
+    elsif params[:ratings]
+      @ratings_to_show = params[:ratings].keys
+      session[:ratings] = @ratings_to_show
+    elsif session[:ratings]
+      @ratings_to_show = session[:ratings]
+#       redirect_to action: :index, ratings: session[:ratings].to_h {|s| [s, 1]}, sortByMovieTitle: session[:sortByMovieTitle], sortByReleaseDate: session[:sortByReleaseDate]
+    else 
+      @ratings_to_show = @all_ratings
+    end
+
+    if params[:sortByMovieTitle]
+      @movies = Movie.with_ratings(@ratings_to_show).order(:title)
+      @clickedTitle = "bg-warning"
+      session[:sortByMovieTitle] = true
+      session[:sortByReleaseDate] = false
+    elsif params[:sortByReleaseDate]
+      @movies = Movie.with_ratings(@ratings_to_show).order(:release_date)
+      @clickedRelease = "bg-warning"
+      session[:sortByReleaseDate] = true
+      session[:sortByMovieTitle] = false
+    elsif session[:sortByMovieTitle]
+      @movies = Movie.with_ratings(@ratings_to_show).order(:title)
+      @clickedTitle = "bg-warning"
+      redirect_to action: :index, sortByMovieTitle: true, ratings: session[:ratings]&.to_h {|s| [s, 1]} || {}
+    elsif session[:sortByReleaseDate]
+      @movies = Movie.with_ratings(@ratings_to_show).order(:release_date)
+      @clickedRelease = "bg-warning"
+      redirect_to action: :index, sortByReleaseDate: true, ratings: session[:ratings]&.to_h {|s| [s, 1]} || {}
+    elsif params[:ratings]
+      @movies = Movie.with_ratings(@ratings_to_show)
+    elsif session[:ratings]
+      @movies = Movie.with_ratings(@ratings_to_show)
+      redirect_to action: :index, sortByReleaseDate: false, sortByMovieTitle: false, ratings: session[:ratings]&.to_h {|s| [s, 1]} || {}
+    else
+      @movies = Movie.with_ratings(@ratings_to_show)
+      session.delete(:sortByMovieTitle)
+      session.delete(:sortByReleaseDate)
+    end
   end
 
   def new
